@@ -66,7 +66,7 @@
             })
               .then(res => res.json())
               .then(data => {
-                const status = data.duplicate === "是" ? "❗️重複" : "✅成功";
+                const status = data.duplicate === true ? "❗️重複" : "✅成功";
                 document.getElementById("result").innerText = `📦 ${code} → ${status}`;
                 // 成功掃描後震動一下
                 if (navigator.vibrate) navigator.vibrate(200);
