@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QR 掃描器</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 30px; }
+    #reader { width: 300px; margin: auto; }
+    #result { margin-top: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h2>掃描 QR Code</h2>
+  <div id="reader"></div>
+  <div id="result">📱 請掃描貼紙...</div>
+
+  <script>
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxn7MFQXEwDgyDp7CuQshI_hbK6lTzsFMVkeufx6bGueXlMHySZghTclNCoSkzYEtuc/exec';
+
+    function sendToSheet(code) {
+      fetch(scriptURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bottle: code })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const msg = `📦 ${code} → ${data.duplicate === "是" ? "❗️重複" : "✅成功"}`;
+        document.getElementById('result').innerHTML = msg;
+      });
+    }
+
+    const scanner = new Html5Qrcode("reader");
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText, decodedResult) => {
+        sendToSheet(decodedText);
+        scanner.stop(); // 避免重複送出
+        setTimeout(() => {
+          document.getElementById('result').innerText = "📱 請掃描貼紙...";
+          scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, sendToSheet);
+        }, 1500);
+      },
+      (errorMessage) => {} // 忽略錯誤
+    );
+  </script>
+</body>
+</html>
