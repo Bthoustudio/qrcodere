@@ -1,80 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>QR 掃描器</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <title>快速去重 QR 掃描器</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-      background-color: #f8f9fa;
-    }
-    #reader {
-      width: 100%;
-      max-width: 600px;
-      height: auto;
-      margin: 0 auto;
-    }
-    #result {
-      font-size: 18px;
-      padding: 20px;
-      color: #333;
-    }
+    body { font-family: sans-serif; text-align: center; margin: 0; padding: 0; background: #f5f5f5; }
+    #reader { width: 90vw; margin: 20px auto; }
+    #result { font-size: 20px; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <h2 style="margin-top: 20px;">📷 掃描 QR Code</h2>
+  <h2>📷 掃描 QR Code</h2>
   <div id="reader"></div>
   <div id="result">📱 請掃描貼紙...</div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const scriptURL = 'https://script.google.com/macros/s/AKfycbzrrLYZNtZmJWFkketP21V43fv1JRMkfxm9y0ywp9AS-qk50EVfi7xlCApNH5iazWFu/exec';
+    const webhookURL = "https://hook.us2.make.com/dz79frbncu1ksv6fgdvm4ovfygm2q3m2";
 
-      function sendToSheet(code) {
-        fetch(scriptURL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bottle: code })
-        })
-        .then(res => res.json())
-        .then(data => {
-          const msg = `📦 ${code} → ${data.duplicate === "是" ? "❗️重複" : "✅成功"}`;
-          document.getElementById('result').innerHTML = msg;
-        })
-        .catch(err => {
-          document.getElementById('result').innerHTML = "❌ 傳送失敗：" + err;
-        });
-      }
+    function sendToMake(code) {
+      fetch(webhookURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bottle: code })
+      })
+      .then(() => {
+        document.getElementById('result').innerHTML = `✅ 傳送成功：${code}`;
+      })
+      .catch(() => {
+        document.getElementById('result').innerHTML = `❌ 傳送失敗`;
+      });
+    }
 
-      const scanner = new Html5Qrcode("reader");
-
-      function startScanner() {
-        scanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decodedText, decodedResult) => {
-            sendToSheet(decodedText);
+    const scanner = new Html5Qrcode("reader");
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        sendToMake(decodedText);
+        scanner.stop(); // 暫停避免連續掃同一張
+        setTimeout(() => {
+          document.getElementById('result').innerText = "📱 請掃描貼紙...";
+          scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
+            sendToMake(decodedText);
             scanner.stop();
-            setTimeout(() => {
-              document.getElementById('result').innerText = "📱 請掃描貼紙...";
-              startScanner();
-            }, 1500);
-          },
-          (errorMessage) => {
-            // 可忽略掃不到的錯誤
-          }
-        ).catch(err => {
-          document.getElementById('result').innerText = "🚫 相機啟動失敗：" + err;
-        });
-      }
-
-      startScanner();
-    });
+            setTimeout(() => scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, () => {}), 1500);
+          });
+        }, 1500);
+      },
+      (error) => { /* 忽略掃不到的錯誤 */ }
+    );
   </script>
 </body>
 </html>
