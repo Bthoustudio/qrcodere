@@ -1,68 +1,79 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>快速QR去重掃描器</title>
+  <meta charset="UTF-8" />
+  <title>快速 QR 去重</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://g.alicdn.com/dingding/dingtalk-jsapi/3.6.25/dingtalk.open.js"></script>
+  <script src="https://g.alicdn.com/dingding/dingtalk-jsapi/2.10.3/dingtalk.open.js"></script>
   <style>
     body {
       font-family: sans-serif;
+      background: #f9f9f9;
       text-align: center;
-      margin: 0;
       padding: 2rem;
-      background: #f2f2f2;
+    }
+    h2 {
+      color: #1677ff;
     }
     button {
+      font-size: 20px;
       padding: 1rem 2rem;
-      font-size: 18px;
-      border-radius: 8px;
-      border: none;
-      background-color: #1677ff;
+      background: #1677ff;
       color: white;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
     }
     #result {
       margin-top: 2rem;
-      font-size: 20px;
+      font-size: 1.5rem;
     }
   </style>
 </head>
 <body>
-  <h2>📱 快速QR去重掃描器</h2>
-  <button onclick="scan()">📷 掃描 QR Code</button>
-  <div id="result">尚未掃描</div>
+  <h2>📱 快速 QR 去重掃描器</h2>
+  <button onclick="scan()">開始掃描</button>
+  <div id="result">請點上方按鈕開始</div>
 
   <script>
-    const webhookURL = "https://hook.us2.make.com/dz79frbncu1ksv6fgdvm4ovfygm2q3m2";
+    const webhook = "https://hook.us2.make.com/dz79frbncu1ksv6fgdvm4ovfygm2q3m2";
+
+    // DingTalk 特殊處理：防止 JSAPI 注入失敗
+    if (navigator.userAgent.includes("DingTalk") && typeof window.dd === "undefined") {
+      if (!localStorage.getItem("dd_retry")) {
+        localStorage.setItem("dd_retry", "1");
+        location.reload();
+      }
+    }
 
     function scan() {
-      if (!dd) {
-        alert("請在釘釘 App 中開啟此頁面");
+      if (!window.dd) {
+        alert("請用釘釘 App 開啟此頁面");
         return;
       }
 
-      dd.ready(function () {
+      dd.ready(() => {
         dd.biz.util.scan({
           type: "qrCode",
           onSuccess: function (res) {
-            const code = res.text || res; // 有些版本回傳在 res.text
+            const code = res.text || res;
+            document.getElementById("result").innerText = `📨 傳送中：${code}`;
 
-            document.getElementById("result").innerHTML = `📨 傳送中：${code}`;
-
-            fetch(webhookURL, {
+            fetch(webhook, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ bottle: code })
             })
-            .then(res => res.json())
-            .then(data => {
-              const status = data.duplicate === "是" ? "❗️重複" : "✅成功";
-              document.getElementById("result").innerHTML = `📦 ${code} → ${status}`;
-            })
-            .catch(() => {
-              document.getElementById("result").innerHTML = "❌ 傳送失敗";
-            });
+              .then(res => res.json())
+              .then(data => {
+                const status = data.duplicate === "是" ? "❗️重複" : "✅成功";
+                document.getElementById("result").innerText = `📦 ${code} → ${status}`;
+                // 成功掃描後震動一下
+                if (navigator.vibrate) navigator.vibrate(200);
+              })
+              .catch(() => {
+                document.getElementById("result").innerText = "❌ 傳送失敗";
+              });
           },
           onFail: function (err) {
             alert("掃描失敗：" + JSON.stringify(err));
@@ -70,8 +81,8 @@
         });
       });
 
-      dd.error(function (err) {
-        alert("JSAPI 授權錯誤：" + JSON.stringify(err));
+      dd.error(err => {
+        alert("釘釘 JSAPI 授權錯誤：" + JSON.stringify(err));
       });
     }
   </script>
